@@ -1,2 +1,0 @@
-# Menu principal do jogo
-
