@@ -1,68 +1,87 @@
-# Classe responsável pelo movimento do Player
+# Scripts/Utils/Movement.py
 
-import pgzero
-import math
-from Scripts.Utils.Inputs import get_input
+from Scripts.Utils.SoundManager import sound_manager
 
-# Função que controla o pulo
-isJumping = False
-jumpHeight = 0
+# --- Constantes de Física ---
+GRAVITY = 800
+PLAYER_SPEED = 200
+JUMP_STRENGTH = 450
 
-# Verifica se o player está em contato com o chão
-def is_on_ground(player):
-    return player.y >= player.ground_level
+def update_player_movement(player, keyboard, dt, platforms):
+    
+    # --- Movimento Horizontal ---
+    if keyboard.left or keyboard.a:
+        player.vx = -PLAYER_SPEED
+        player.facing_right = False  # Virada para a esquerda
+    elif keyboard.right or keyboard.d:
+        player.vx = PLAYER_SPEED
+        player.facing_right = True   # Virada para a direita
+    else:
+        player.vx = 0
 
-# O Jogador só pode pular se estiver em contato com o chão ou dar um unico pulo duplo
-# Isso garante que o jogador não possa pular infinitamente no ar
-def can_jump(player):
-    return is_on_ground(player) or (player.double_jump_available and not isJumping)
+    player.x += player.vx * dt
+    
+    # Não limitamos o movimento horizontal - a câmera segue o player
+    
+    # --- Lógica de Estado da Animação (Simplificada) ---
+    if player.is_grounded:
+        if player.vx != 0: # Se está a mover-se no chão
+            player.state = 'run'
+        else: # Se está parado no chão
+            player.state = 'idle'
+    else: # Se está no ar
+        player.state = 'jump'
 
-def jump(player): # Inicia o pulo do player
-    global isJumping, jumpHeight
-    if can_jump(player):
-        isJumping = True
-        jumpHeight = 0
-        player.velocity_y = -player.jump_speed
-        player.double_jump_available = True
-        player.is_jumping = True
+    # --- Pulo Duplo ---
+    jump_key_pressed = keyboard.up or keyboard.space
+    
+    if jump_key_pressed and not player.jump_pressed:
+        # Pulo normal quando no chão
+        if player.is_grounded and player.jump_count < player.max_jumps:
+            player.vy = -JUMP_STRENGTH
+            player.is_grounded = False
+            player.jump_count = 1  # Primeiro pulo usado
+            sound_manager.play_sound('player_jump')
+        # Pulo duplo no ar
+        elif not player.is_grounded and player.jump_count < player.max_jumps:
+            player.vy = -JUMP_STRENGTH * 0.8  # Pulo duplo é um pouco mais fraco
+            player.jump_count = 2  # Segundo pulo usado
+            sound_manager.play_sound('player_jump', volume=0.5)  # Som mais baixo para pulo duplo
+    
+    # Atualiza estado da tecla de pulo
+    player.jump_pressed = jump_key_pressed
+    
+    # --- Gravidade e Colisão ---
+    
+    # Posição antiga.
+    old_y = player.y
+    old_bottom = player.bottom
 
-def update_jump(player, dt):
-    global isJumping, jumpHeight
-    if isJumping: # Se o player estiver pulando
-        jumpHeight += player.jump_speed * dt # Aumenta a altura do pulo
-        player.y += player.velocity_y * dt # Atualiza a posição do player com base na velocidade vertical
-        player.velocity_y += player.gravity * dt # Aplica a gravidade na velocidade vertical
-
-        if jumpHeight >= player.max_jump_height or is_on_ground(player): # Se a altura do pulo for maior que a altura máxima ou se o player estiver no chão
-            isJumping = False # Para o pulo
-            jumpHeight = 0
-            player.is_jumping = False
-            player.double_jump_available = False
-            player.velocity_y = 0
-            player.y = max(player.y, player.ground_level)  # Garante que o player permaneça no nível do chão
-
-# Função que controla o movimento horizontal do player
-def move_player(player, dt):
-    inputs = get_input()  # Obtém os inputs do jogador
-
-    if inputs['left']:  # Se o jogador pressionar a tecla esquerda
-        player.x -= player.speed * dt  # Move o player para a esquerda
-        player.direction = 'left'  # Define a direção do player como esquerda
-
-    if inputs['right']:  # Se o jogador pressionar a tecla direita
-        player.x += player.speed * dt  # Move o player para a direita
-        player.direction = 'right'  # Define a direção do player como direita
-
-    if inputs['jump']:  # Se o jogador pressionar a tecla de pulo
-        jump(player)  # Chama a função de pulo
-
-    update_jump(player, dt)  # Atualiza o estado do pulo
-
-# Função que atualiza a posição do player
-def update_player(player, dt):
-    move_player(player, dt)  # Move o player com base nos inputs
-    player.x = max(0, min(player.x, player.screen_width))  # Garante que o player não saia da tela
-    player.y = max(player.ground_level, player.y)  # Garante que o player não saia do chão
-    player.rect.topleft = (player.x, player.y)  # Atualiza o retângulo de colisão do player
-
-# Função que desenha o player na tela e atualiza sua animação
+    # Aplicamos a gravidade e o movimento vertical.
+    player.vy += GRAVITY * dt
+    player.y += player.vy * dt
+    
+    # Limite inferior do mundo
+    if player.y > 700:  
+        player.y = 100
+        player.vy = 0
+        player.is_grounded = False
+    
+    # Assumimos que o jogador está no ar até provarmos o contrário.
+    player.is_grounded = False
+    
+    # Verificamos a colisão com cada plataforma (voltando ao sistema original).
+    for p in platforms:
+        if player.colliderect(p):
+            
+            if (player.vy > 0 and  # Player está caindo
+                old_bottom <= p.top + 10 and  # Player estava acima da plataforma (com pequena margem)
+                abs(player.bottom - p.top) < 50):  # Não está muito longe da plataforma
+                
+                # Posicionamento padrão na plataforma
+                player.bottom = p.top
+                player.vy = 0
+                
+                player.is_grounded = True
+                player.jump_count = 0  # Reseta contador de pulos quando toca no chão
+                break # Sai do loop quando encontra uma plataforma válida
