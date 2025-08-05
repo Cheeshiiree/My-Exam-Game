@@ -2,9 +2,9 @@
 
 ## **JOGO DE PLATAFORMA TESTE KODLAND**
 
-**Versão Atual**: 2.0 
+**Versão Atual**: 2.0  
 **Framework**: PgZero (Python Game Zero)  
-**Compatibilidade**: Windows 11/10
+**Compatibilidade**: Windows 11/10  
 
 ---
 
@@ -58,9 +58,9 @@ Menu principal com navegação por teclado:
 - Complete todos os desafios
 
 ### **Features:**
--Pule nos inimigos ou colete a estrela para derrotar os inimigos
--Colete corações para recuperar a vida
--Chegue no topo da torre para completar a demo.
+- Pule nos inimigos ou colete a estrela para derrotar os inimigos  
+- Colete corações para recuperar a vida  
+- Chegue no topo da torre para completar a demo.  
 
 ---
 
@@ -117,10 +117,10 @@ Menu principal com navegação por teclado:
 ## 📞 **INFORMAÇÕES**
 
 **Desenvolvido para**: Teste de Certificação Python Tutor  
-**Desenvolvido por**: Anna Beatryz C.
+**Desenvolvido por**: Anna Beatryz C.  
 **Data**: 04 Agosto 2025  
-**Versão**: 2.0 (DEMO)
-**Status**: Aguadando aprovação
+**Versão**: 2.0 (DEMO)  
+**Status**: Aguadando aprovação  
 
 ---
 
