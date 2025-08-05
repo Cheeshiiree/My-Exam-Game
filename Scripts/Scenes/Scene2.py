@@ -2,7 +2,7 @@
 
 # --- Importações Essenciais ---
 from Scripts.Actors.Player import Player
-from Scripts.Actors.Enemies import BlueBird, RedSquare, GreenCircle
+from Scripts.Actors.Enemies import BlueBird, FireBall, Ghost
 from Scripts.Components import Platform, DangerPlatform, Heart, PowerFruit
 from Scripts.Utils.Movement import update_player_movement
 from Scripts.Utils.SoundManager import sound_manager
@@ -14,6 +14,9 @@ HEIGHT = 600  # Resolução HD padrão
 # --- Configurações da Câmera ---
 camera_x = 0
 camera_y = 0
+
+# --- Background Simples ---
+background_image = None
 
 # --- Listas de Objetos do Jogo ---
 player = None
@@ -37,7 +40,10 @@ def init_scene2(player_from_scene1=None):
     """
     Prepara a Scene2 - Fase do Castelo Flutuante
     """
-    global player, platforms, enemies, hearts, power_fruits, camera_x, camera_y
+    global player, platforms, enemies, hearts, power_fruits, camera_x, camera_y, background_image
+
+    # Define o background simples da fase 2
+    background_image = 'bg_fase2_orig_big'
 
     # Se player veio da Scene1, mantém a vida e power-ups
     if player_from_scene1:
@@ -65,45 +71,48 @@ def init_scene2(player_from_scene1=None):
     # --- CRIAÇÃO DO MAPA DA FASE 2: CASTELO FLUTUANTE ---
     
     # SEÇÃO 1: Entrada do Castelo (0-800)
-    # Chão de entrada
+    # Chão de entrada com tiles de rocha
     for i in range(0, 800, 64):
-        platforms.append(Platform('normal', (i, HEIGHT - 32), (64, 32)))
+        platforms.append(Platform('rock_tiles_00', (i, HEIGHT - 32), (64, 32)))
     
-    # Torres de entrada
+    # Torres de entrada com variação de tiles
     for j in range(6):
-        platforms.append(Platform('normal', (100, HEIGHT - 80 - j*60), (64, 32)))
-        platforms.append(Platform('normal', (700, HEIGHT - 80 - j*60), (64, 32)))
+        tile_type = 'rock_tiles_15' if j % 2 == 0 else 'rock_tiles_30'
+        platforms.append(Platform(tile_type, (100, HEIGHT - 80 - j*60), (64, 32)))
+        platforms.append(Platform(tile_type, (700, HEIGHT - 80 - j*60), (64, 32)))
     
     # SEÇÃO 2: Plataformas Flutuantes (800-1600)
-    # Série de plataformas flutuantes em zigue-zague
-    platforms.append(Platform('normal', (900, HEIGHT - 150), (80, 32)))
-    platforms.append(Platform('normal', (1100, HEIGHT - 250), (80, 32)))
-    platforms.append(Platform('normal', (1300, HEIGHT - 180), (80, 32)))
-    platforms.append(Platform('normal', (1500, HEIGHT - 320), (80, 32)))
+    # Série de plataformas flutuantes em zigue-zague com tiles variados
+    platforms.append(Platform('rock_tiles_45', (900, HEIGHT - 150), (80, 32)))
+    platforms.append(Platform('rock_tiles_15', (1100, HEIGHT - 250), (80, 32)))
+    platforms.append(Platform('rock_tiles_30', (1300, HEIGHT - 180), (80, 32)))
+    platforms.append(Platform('rock_tiles_00', (1500, HEIGHT - 320), (80, 32)))
     
     # Plataformas perigosas flutuantes
     platforms.append(DangerPlatform((1000, HEIGHT - 200), (64, 32)))
     platforms.append(DangerPlatform((1400, HEIGHT - 280), (64, 32)))
     
     # SEÇÃO 3: O Grande Salto (1600-2400)
-    # Apenas algumas plataformas muito espaçadas
-    platforms.append(Platform('normal', (1700, HEIGHT - 200), (64, 32)))
-    platforms.append(Platform('normal', (1950, HEIGHT - 400), (64, 32)))
-    platforms.append(Platform('normal', (2200, HEIGHT - 300), (64, 32)))
-    platforms.append(Platform('normal', (2400, HEIGHT - 150), (64, 32)))
+    # Apenas algumas plataformas muito espaçadas com tiles especiais
+    platforms.append(Platform('rock_tiles_45', (1700, HEIGHT - 200), (64, 32)))
+    platforms.append(Platform('rock_tiles_30', (1950, HEIGHT - 400), (64, 32)))
+    platforms.append(Platform('rock_tiles_15', (2200, HEIGHT - 300), (64, 32)))
+    platforms.append(Platform('rock_tiles_00', (2400, HEIGHT - 150), (64, 32)))
     
     # SEÇÃO 4: Torre Final (2400-3200)
-    # Chão da área final
+    # Chão da área final com tiles de rocha
     for i in range(2400, 3200, 64):
-        platforms.append(Platform('normal', (i, HEIGHT - 32), (64, 32)))
+        platforms.append(Platform('rock_tiles_00', (i, HEIGHT - 32), (64, 32)))
     
-    # Torre gigante no final
+    # Torre gigante no final com variação de tiles
     for j in range(12):
-        platforms.append(Platform('normal', (2800, HEIGHT - 80 - j*50), (64, 32)))
-        platforms.append(Platform('normal', (2900, HEIGHT - 100 - j*50), (64, 32)))
+        tile_left = 'rock_tiles_30' if j % 3 == 0 else 'rock_tiles_15'
+        tile_right = 'rock_tiles_45' if j % 2 == 0 else 'rock_tiles_00'
+        platforms.append(Platform(tile_left, (2800, HEIGHT - 80 - j*50), (64, 32)))
+        platforms.append(Platform(tile_right, (2900, HEIGHT - 100 - j*50), (64, 32)))
     
     # Plataforma final no topo
-    platforms.append(Platform('normal', (2850, HEIGHT - 650), (100, 32)))
+    platforms.append(Platform('rock_tiles_45', (2850, HEIGHT - 650), (100, 32)))
     
     # --- INIMIGOS DA FASE 2 (Mais Desafiadores) ---
     
@@ -113,21 +122,21 @@ def init_scene2(player_from_scene1=None):
     enemies.append(BlueBird(pos=(1800, HEIGHT - 250)))
     enemies.append(BlueBird(pos=(2600, HEIGHT - 200)))
     
-    # RedSquares nas torres
-    enemies.append(RedSquare(pos=(150, HEIGHT - 200), size=28))
-    enemies.append(RedSquare(pos=(750, HEIGHT - 200), size=28))
-    enemies.append(RedSquare(pos=(2850, HEIGHT - 300), size=32))
+    # FireBall nas torres
+    enemies.append(FireBall(pos=(150, HEIGHT - 200), size=28))
+    enemies.append(FireBall(pos=(750, HEIGHT - 200), size=28))
+    enemies.append(FireBall(pos=(2850, HEIGHT - 300), size=32))
     
-    # GreenCircles perseguidores (mais agressivos)
-    green1 = GreenCircle(pos=(1000, HEIGHT - 100), size=30)
+    # Ghost perseguidores (mais agressivos)
+    green1 = Ghost(pos=(1000, HEIGHT - 100), size=30)
     green1.set_player_reference(player)
     enemies.append(green1)
     
-    green2 = GreenCircle(pos=(2000, HEIGHT - 200), size=30)
+    green2 = Ghost(pos=(2000, HEIGHT - 200), size=30)
     green2.set_player_reference(player)
     enemies.append(green2)
     
-    green3 = GreenCircle(pos=(2900, HEIGHT - 400), size=32)
+    green3 = Ghost(pos=(2900, HEIGHT - 400), size=32)
     green3.set_player_reference(player)
     enemies.append(green3)
     
@@ -145,6 +154,20 @@ def init_scene2(player_from_scene1=None):
     power_fruits.append(PowerFruit(pos=(2950, HEIGHT - 500)))   # Torre final
 
 
+def create_rock_platform(pos, size, tile_type='rock_tile'):
+    """Cria uma plataforma usando os novos tiles de rocha."""
+    return Platform(tile_type, pos, size)
+
+def create_varied_rock_platforms():
+    """Cria plataformas variadas usando diferentes tiles de rocha."""
+    rock_platforms = []
+    
+    # Alguns tiles de rocha interessantes para variar
+    rock_tiles = ['rock_tiles_00', 'rock_tiles_15', 'rock_tiles_30', 'rock_tiles_45']
+    
+    return rock_platforms
+
+
 def update_camera():
     """Atualiza a posição da câmera para seguir o player."""
     global camera_x, camera_y
@@ -158,13 +181,28 @@ def update_camera():
         target_camera_y = player.y - HEIGHT // 2
         camera_y = max(-400, min(target_camera_y, 100))  # Permite ver mais para cima
 
+def draw_background(screen):
+    """Desenha o background simples da fase."""
+    if background_image:
+        # Calcula quantas cópias da imagem precisamos para cobrir a tela
+        # considerando o movimento da câmera
+        screen_width = WIDTH
+        bg_width = WIDTH  # Assumindo que a imagem tem a largura da tela
+        
+        # Desenha o background repetido para cobrir toda a área visível
+        start_x = int(-camera_x % bg_width) - bg_width
+        for x in range(start_x, screen_width + bg_width, bg_width):
+            screen.blit(background_image, (x, 0))
+
 def draw(screen):
     """Função para desenhar tudo na tela com câmera."""
     screen.clear()
-    screen.fill((75, 0, 130)) 
     
     # Atualiza câmera
     update_camera()
+    
+    # Desenha o background simples
+    draw_background(screen)
     
     # Desenha todas as plataformas (ajustadas pela câmera)
     for p in platforms:
@@ -213,12 +251,10 @@ def draw(screen):
             pf.draw()
             pf.x, pf.y = original_x, original_y
     
-    # HUD de vida
-    if player:
-        draw_health_ui(screen)
-    
     # UI da Fase 2
     if player:
+        draw_health_ui(screen)
+        
         phase_text = "FASE 2: CASTELO FLUTUANTE"
         screen.draw.text(phase_text, (10, 10), color="white", fontsize=24)
         
@@ -227,9 +263,15 @@ def draw(screen):
     
     # Mensagens temporárias
     if message_timer > 0:
-        msg_x = WIDTH // 2
-        msg_y = HEIGHT // 2 - 50
-        screen.draw.text(message_text, center=(msg_x, msg_y), color="gold", fontsize=36)
+        msg_x = WIDTH - 20
+        msg_y = HEIGHT - 20
+        # Texto menor, alinhado no canto inferior direito
+        screen.draw.text(
+            message_text,
+            topright=(msg_x, msg_y),
+            color="black",
+            fontsize=28
+        )
 
 
 def draw_health_ui(screen):
@@ -253,10 +295,16 @@ def draw_health_ui(screen):
     health_text = f"Vida: {player.health}/{player.max_health}"
     screen.draw.text(health_text, (heart_start_x, heart_start_y + 40), color="white")
     
+    # Indicador de invencibilidade
+    if player.invincible:
+        invincible_text = f"INVENCÍVEL: {player.invincible_timer:.1f}s"
+        screen.draw.text(invincible_text, (heart_start_x + 25, heart_start_y + 100), color="yellow")
+    
+    # Indicador de power-up
     if player.has_power:
         power_text = f"PODER ATIVO: {player.power_timer:.1f}s"
-        screen.draw.text(power_text, (heart_start_x + 200, heart_start_y), color="gold")
-
+        screen.draw.text(power_text, (heart_start_x + 200, heart_start_y + 80), color="gold")
+        screen.draw.text("Inimigos vulneráveis!", (heart_start_x + 200, heart_start_y + 100), color="white")
 
 def update(dt, keyboard):
     global message_timer
@@ -341,8 +389,7 @@ def update(dt, keyboard):
             show_message("PARABÉNS! VOCÊ CONCLUIU A DEMO")
             sound_manager.play_sound('level_complete')
             # Não retorna nada - permanece na tela mostrando a vitória
-            # O jogador pode pressionar ESC para voltar ao menu se quiser
-            # return "menu"  # Comentado - agora só mostra a mensagem
+            
     
     elif player and not player.is_alive():
         # Game Over - Redireciona diretamente para o início da fase 1

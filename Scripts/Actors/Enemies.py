@@ -1,6 +1,7 @@
 # Scripts/Actors/Enemies.py
 
 from pgzero.actor import Actor
+from pygame import Rect
 import random
 import math
 
@@ -26,7 +27,6 @@ class BaseEnemy(Actor):
         offset_x = (self.width - reduced_width) / 2
         offset_y = (self.height - reduced_height) / 2
 
-        from pygame import Rect
         return Rect(
             self.x - reduced_width/2,
             self.y - reduced_height/2, 
@@ -85,11 +85,11 @@ class BaseEnemy(Actor):
 
 class BlueBird(BaseEnemy):
     """
-    Inimigo voador triangular azul que patrulha horizontalmente.
+    Inimigo voador blue bird que patrulha horizontalmente com animação de voo.
     """
     def __init__(self, pos=(0, 0)):
-        # Usa a forma triangular azul
-        super().__init__('blue_triangle', 'blue_triangle_white', pos=pos)
+        # Usa os sprites do blue bird
+        super().__init__('0_bb_fly', 'hit_32x32', pos=pos)
         
         self.hitbox_scale = 0.6
         
@@ -104,9 +104,39 @@ class BlueBird(BaseEnemy):
         self.bob_speed = 3.0
         self.bob_range = 8
         self.base_y = pos[1]
+        
+        # Animação de voo
+        self.animation_timer = 0.0
+        self.animation_speed = 8.0  # Frames por segundo
+        self.current_frame = 0
+        
+        # Frames para direita (originais)
+        self.fly_frames_right = [
+            '0_bb_fly', '1_bb_fly', '2_bb_fly', '3_bb_fly', 
+            '4_bb_fly', '5_bb_fly', '6_bb_fly', '7_bb_fly', '8_bb_fly'
+        ]
+        
+        # Frames para esquerda (flipados)
+        self.fly_frames_left = [
+            '0_bb_fly_left', '1_bb_fly_left', '2_bb_fly_left', '3_bb_fly_left', 
+            '4_bb_fly_left', '5_bb_fly_left', '6_bb_fly_left', '7_bb_fly_left', '8_bb_fly_left'
+        ]
+        self.hurt_frames = [
+            '00_bluebird_hurt', '01_bluebird_hurt', '02_bluebird_hurt', 
+            '03_bluebird_hurt', '04_bluebird_hurt'
+        ]
+        
+        # Frames hurt para esquerda (flipados)
+        self.hurt_frames_left = [
+            '00_bluebird_hurt_left', '01_bluebird_hurt_left', '02_bluebird_hurt_left', 
+            '03_bluebird_hurt_left', '04_bluebird_hurt_left'
+        ]
+        
+        # Timer para efeito de piscar quando vulnerável
+        self.blink_timer = 0.0
 
     def update_movement(self, dt):
-        """Move o pássaro de um lado para o outro."""
+        """Move o pássaro de um lado para o outro com animação."""
         self.x += self.patrol_speed * self.direction * dt
 
         # Verifica limites da patrulha
@@ -115,8 +145,36 @@ class BlueBird(BaseEnemy):
         elif self.x < self.start_x - self.patrol_range:
             self.direction = 1
         
+        # Movimento vertical (bob)
         self.bob_timer += dt * self.bob_speed
         self.y = self.base_y + math.sin(self.bob_timer) * self.bob_range
+        
+        # Atualiza animação baseada no estado
+        if self.is_dying:
+            # Animação de morte com direção
+            hurt_frame = int((self.death_timer / self.death_duration) * len(self.hurt_frames))
+            if hurt_frame < len(self.hurt_frames):
+                # Escolhe sprite hurt baseado na direção
+                if self.direction == 1:  # Indo para direita
+                    self.image = self.hurt_frames_left[hurt_frame]  # Usa hurt flipado
+                else:  # Indo para esquerda
+                    self.image = self.hurt_frames[hurt_frame]  # Usa hurt original
+        elif self.is_vulnerable:
+            # Quando vulnerável, usa sprite branco com direção
+            if self.direction == 1:  # Indo para direita
+                self.image = '00_bluebird_hurt_left'  # Sprite branco flipado
+            else:  # Indo para esquerda
+                self.image = '00_bluebird_hurt'  # Sprite branco original
+        else:
+            # Animação normal de voo com direção
+            self.animation_timer += dt * self.animation_speed
+            self.current_frame = int(self.animation_timer) % len(self.fly_frames_right)
+            
+            # Escolhe sprites baseado na direção (corrigindo inversão)
+            if self.direction == 1:  # Indo para direita
+                self.image = self.fly_frames_left[self.current_frame]  # Trocado
+            else:  # Indo para esquerda (direction == -1)
+                self.image = self.fly_frames_right[self.current_frame]  # Trocado
 
     def update(self, dt):
         """Função de atualização principal."""
@@ -126,32 +184,53 @@ class BlueBird(BaseEnemy):
             
         if not self.is_dying:
             self.update_movement(dt)
+            
         return False
 
+    def make_vulnerable(self):
+        """Torna o BlueBird vulnerável mantendo a animação."""
+        self.is_vulnerable = True
+        # Não define imagem fixa aqui - deixa a animação continuar
+        
+    def make_invulnerable(self):
+        """Remove vulnerabilidade do BlueBird."""
+        self.is_vulnerable = False
+        # A animação normal continuará no update_movement
+
     def draw(self):
-        """Desenha o triângulo azul."""
+        """Desenha o blue bird."""
         super().draw()
 
 
-class RedSquare(BaseEnemy):
+class FireBall(BaseEnemy):
     """
-    Inimigo quadrado vermelho que se move verticalmente.
+    Inimigo bola de fogo que flutua verticalmente com animação.
     """
     def __init__(self, pos=(0, 0), size=32):
-        # Usa a forma quadrada vermelha
-        super().__init__('red_square', 'red_square_white', pos=pos)
+        # Usa o sprite do fogo
+        super().__init__('fire', 'fire_white', pos=pos)
         
-       
-        self.hitbox_scale = 0.75  
-        
-        # Movimento Vertical
-        self.patrol_speed = 80
-        self.patrol_range = 100
+        # Movimento Vertical (fogo flutua)
+        self.patrol_speed = 80  # Fogo é mais dinâmico
+        self.patrol_range = 100  # Movimento vertical
         self.start_y = pos[1]
         self.direction = 1  # 1 = para baixo, -1 = para cima
         
+        # Fogo tem hitbox menor
+        self.hitbox_scale = 0.6
+        
+        # Animação de fogo
+        self.animation_timer = 0.0
+        self.animation_speed = 12.0  # Frames por segundo (mais rápido)
+        self.current_frame = 0
+        
+        # Frames de animação do fogo
+        self.fire_frames = [
+            'fire_anim_0', 'fire_anim_1', 'fire_anim_2', 'fire_anim_3', 'fire_anim_4'
+        ]
+        
     def update_movement(self, dt):
-        """Move o quadrado para cima e para baixo."""
+        """Move a bola de fogo para cima e para baixo com animação."""
         self.y += self.patrol_speed * self.direction * dt
         
         # Se chegou ao limite inferior da patrulha
@@ -161,6 +240,18 @@ class RedSquare(BaseEnemy):
         elif self.y < self.start_y - self.patrol_range:
             self.direction = 1   # Muda direção para baixo
         
+        # Atualiza animação de fogo
+        self.animation_timer += dt * self.animation_speed
+        self.current_frame = int(self.animation_timer) % len(self.fire_frames)
+        
+        # Atualiza sprite baseado no estado
+        if self.is_vulnerable:
+            # Quando vulnerável, usa sprite branco
+            self.image = 'fire_white'
+        elif not self.is_dying:
+            # Animação normal de fogo
+            self.image = self.fire_frames[self.current_frame]
+        
     def update(self, dt):
         """Função de atualização principal."""
         # Verifica se deve morrer
@@ -171,33 +262,61 @@ class RedSquare(BaseEnemy):
             self.update_movement(dt)
         return False
 
+    def make_vulnerable(self):
+        """Torna a bola de fogo vulnerável."""
+        self.is_vulnerable = True
+        
+    def make_invulnerable(self):
+        """Remove vulnerabilidade da bola de fogo."""
+        self.is_vulnerable = False
+        
+
     def draw(self):
-        """Desenha o quadrado vermelho."""
+        """Desenha a bola de fogo."""
         super().draw()
 
 
-class GreenCircle(BaseEnemy):
+class Ghost(BaseEnemy):
     """
-    Inimigo circular verde que persegue o player.
+    Inimigo fantasma que persegue o player.
     """
     def __init__(self, pos=(0, 0), size=28):
-        # Usa a forma circular verde
-        super().__init__('green_circle', 'green_circle_white', pos=pos)
+        # Usa o sprite do fantasma
+        super().__init__('ghost', 'ghost_white', pos=pos)
         
         
-        self.hitbox_scale = 0.8 
+        # Fantasma tem hitbox um pouco menor
+        self.hitbox_scale = 0.7 
         
-        # Comportamento de Perseguição
-        self.chase_speed = 50
-        self.detection_range = 200
+        # Comportamento de Perseguição (fantasma é mais rápido)
+        self.chase_speed = 70  # Fantasma é mais rápido
+        self.detection_range = 250  # Fantasma detecta de mais longe
         self.player_ref = None
+        
+        # Direção do fantasma para sprites direcionais
+        self.facing_direction = 1  # 1 = direita, -1 = esquerda
+        
+        # Animação idle do fantasma
+        self.animation_timer = 0.0
+        self.animation_speed = 6.0  # Frames por segundo
+        self.current_frame = 0
+        
+        # Frames para direita (originais)
+        self.idle_frames_right = [
+            'ghost_idle_0', 'ghost_idle_1', 'ghost_idle_2', 'ghost_idle_3'
+        ]
+        
+        # Frames para esquerda (flipados)
+        self.idle_frames_left = [
+            'ghost_idle_0_left', 'ghost_idle_1_left', 'ghost_idle_2_left', 'ghost_idle_3_left'
+        ]
         
     def set_player_reference(self, player):
         """Define a referência ao player para perseguição."""
         self.player_ref = player
         
     def update_movement(self, dt):
-        """Move o círculo em direção ao player se estiver próximo."""
+        """Move o fantasma em direção ao player se estiver próximo."""
         if not self.player_ref:
             return
             
@@ -208,13 +327,33 @@ class GreenCircle(BaseEnemy):
         
         # Se o player estiver dentro do alcance de detecção
         if distance < self.detection_range and distance > 5:
+            # Determina direção baseada no movimento horizontal
+            if dx > 0:
+                self.facing_direction = 1  # Indo para direita
+            elif dx < 0:
+                self.facing_direction = -1  # Indo para esquerda
+            
             # Normaliza o vetor direção
             dx = dx / distance
             dy = dy / distance
             
-            # Move em direção ao player
+            # Move em direção ao player (fantasma flutua através de obstáculos)
             self.x += dx * self.chase_speed * dt
             self.y += dy * self.chase_speed * dt
+        
+        # Atualiza animação idle
+        self.animation_timer += dt * self.animation_speed
+        self.current_frame = int(self.animation_timer) % len(self.idle_frames_right)
+        
+        # Atualiza sprite baseado na direção e estado
+        if self.is_vulnerable:
+            # Quando vulnerável, usa sprite branco
+            self.image = 'ghost_white'
+        elif not self.is_dying:
+            if self.facing_direction == 1:  # Indo para direita
+                self.image = self.idle_frames_left[self.current_frame]  # Trocado
+            else:  # Indo para esquerda
+                self.image = self.idle_frames_right[self.current_frame]  # Trocado
     
     def update(self, dt):
         """Função de atualização principal."""
@@ -226,6 +365,16 @@ class GreenCircle(BaseEnemy):
             self.update_movement(dt)
         return False
 
+    def make_vulnerable(self):
+        """Torna o fantasma vulnerável mantendo a direção."""
+        self.is_vulnerable = True
+        # Não define imagem fixa aqui - deixa a animação continuar com sprite branco
+        
+    def make_invulnerable(self):
+        """Remove vulnerabilidade do fantasma."""
+        self.is_vulnerable = False
+        # A animação normal continuará no update_movement
+
     def draw(self):
-        """Desenha o círculo verde."""
+        """Desenha o fantasma."""
         super().draw()

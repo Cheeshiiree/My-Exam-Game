@@ -1,9 +1,5 @@
 # main.py
 
-import os
-# Configuração para iniciar em tela cheia (antes de importar pygame/pgzero)
-os.environ['SDL_VIDEO_WINDOW_POS'] = 'centered'
-
 import pgzrun
 # Importamos as cenas
 from Scripts.Scenes import Scene1, Scene2, Menu
@@ -12,7 +8,7 @@ from Scripts.Utils.SoundManager import sound_manager
 # Configurações da Janela diretamente no Main
 WIDTH = 800  # Resolução HD
 HEIGHT = 600  # Resolução HD
-TITLE = "My Exam Game - Formas Geométricas"
+TITLE = "Demo Plataforma com Pygame Zero"
 
 # Sistema de gerenciamento de cenas
 current_scene = "menu"  # Começa no menu principal
@@ -32,14 +28,14 @@ def toggle_background_music():
             music.play('background_music')
             music.set_volume(0.4)
             music_playing = True
-            print("♪ Música ativada")
+            
         except Exception as e:
             print(f"Erro ao tocar música: {e}")
     elif not music_enabled and music_playing:
         try:
             music.stop()
             music_playing = False
-            print("♪ Música desativada")
+            
         except Exception as e:
             print(f"Erro ao parar música: {e}")
 
@@ -52,17 +48,23 @@ def init_background_music():
             music.play('background_music')
             music.set_volume(0.4)
             music_playing = True
-            print("♪ Música de fundo iniciada")
+            
         except Exception as e:
             print(f"Erro ao inicializar música: {e}")
             music_playing = False
 
 def draw():
-    """
-    Esta é a função de desenho principal que o Pygame Zero vai chamar.
-    A variável 'screen' é criada magicamente aqui.
-    """
     global current_scene
+    
+    # Configura o sound manager na primeira execução
+    if not hasattr(sound_manager, '_pgzero_sounds_set'):
+        try:
+            # No PgZero, 'sounds' é uma variável global disponível
+            sound_manager._pgzero_sounds = sounds
+            sound_manager._pgzero_sounds_set = True
+        except NameError:
+            # sounds ainda não está disponível
+            pass
     
     if current_scene == "menu":
         Menu.draw_menu(screen)
@@ -72,10 +74,6 @@ def draw():
         Scene2.draw(screen)
 
 def update(dt):
-    """
-    Esta é a função de atualização principal que o Pygame Zero vai chamar.
-    A variável 'keyboard' é criada magicamente aqui.
-    """
     global current_scene
     
     scene_transition = None
@@ -125,8 +123,7 @@ def update(dt):
         # Toca um som de confirmação se os sons estiverem ligados
         sound_manager.play_sound('menu_toggle')
 
-# Inicializa a música quando o jogo começar
+
 init_background_music()
 
-# Agora, o pgzrun.go() vai usar as funções 'draw' e 'update' definidas NESTE ficheiro.
 pgzrun.go()

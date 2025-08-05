@@ -21,7 +21,7 @@ def update_player_movement(player, keyboard, dt, platforms):
 
     player.x += player.vx * dt
     
-    # Não limitamos o movimento horizontal - a câmera segue o player
+    # A câmera segue o player
     
     # --- Lógica de Estado da Animação (Simplificada) ---
     if player.is_grounded:
@@ -57,7 +57,7 @@ def update_player_movement(player, keyboard, dt, platforms):
     old_y = player.y
     old_bottom = player.bottom
 
-    # Aplicamos a gravidade e o movimento vertical.
+    # Gravidade e o movimento vertical.
     player.vy += GRAVITY * dt
     player.y += player.vy * dt
     
@@ -67,15 +67,14 @@ def update_player_movement(player, keyboard, dt, platforms):
         player.vy = 0
         player.is_grounded = False
     
-    # Assumimos que o jogador está no ar até provarmos o contrário.
     player.is_grounded = False
     
-    # Verificamos a colisão com cada plataforma (voltando ao sistema original).
+    # Verificamos a colisão com cada plataforma.
     for p in platforms:
         if player.colliderect(p):
             
             if (player.vy > 0 and  # Player está caindo
-                old_bottom <= p.top + 10 and  # Player estava acima da plataforma (com pequena margem)
+                old_bottom <= p.top + 10 and  # Player estava acima da plataforma 
                 abs(player.bottom - p.top) < 50):  # Não está muito longe da plataforma
                 
                 # Posicionamento padrão na plataforma

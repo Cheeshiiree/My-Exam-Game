@@ -2,8 +2,8 @@
 
 # --- Importações Essenciais ---
 from Scripts.Actors.Player import Player
-from Scripts.Actors.Enemies import BlueBird, RedSquare, GreenCircle
-from Scripts.Components import Platform, DangerPlatform, Heart, PowerFruit  # Importação limpa
+from Scripts.Actors.Enemies import BlueBird, FireBall, Ghost
+from Scripts.Components import Platform, DangerPlatform, Heart, PowerFruit  
 from Scripts.Utils.Movement import update_player_movement
 from Scripts.Utils.SoundManager import sound_manager
 
@@ -14,6 +14,9 @@ HEIGHT = 600  # Resolução HD padrão
 # --- Configurações da Câmera ---
 camera_x = 0
 camera_y = 0
+
+# --- Background Simples ---
+background_image = None
 
 # --- Listas de Objetos do Jogo ---
 player = None
@@ -38,10 +41,12 @@ def show_message(text):
 
 def init_game():
     """
-    Prepara tudo para o início do jogo.
-    É chamada no início e pode ser usada para reiniciar a fase.
+    Prepara o jogo - Primeira fase
     """
-    global player, platforms, enemies, hearts, power_fruits, portal, camera_x, camera_y
+    global player, platforms, enemies, hearts, power_fruits, portal, camera_x, camera_y, background_image
+
+    # Define o background simples da fase 1
+    background_image = 'bg_fase1_orig_big'
 
     # Cria o jogador numa posição inicial
     player = Player(pos=(100, HEIGHT - 100))
@@ -56,13 +61,25 @@ def init_game():
     hearts = []
     power_fruits = []
     
-    # Cria o portal no final da fase
-    from pgzero.actor import Actor
-    portal = Actor('portal', pos=(3050, HEIGHT - 100))
+    # Cria o portal no final da fase 
+    try:
+        from pgzero.actor import Actor
+        portal = Actor('portal', pos=(3050, HEIGHT - 100))
+    except ImportError:
+        # Fallback - cria um objeto simples se não conseguir importar
+        class SimplePortal:
+            def __init__(self, pos):
+                self.x, self.y = pos
+                self.width, self.height = 64, 64
+            def colliderect(self, other):
+                return (abs(self.x - other.x) < 32 and abs(self.y - other.y) < 32)
+            def draw(self):
+                pass  # Será implementado no draw principal
+        portal = SimplePortal((3050, HEIGHT - 100))
     
     # --- Criação do Mapa Extenso ---
     
-    # SEÇÃO 1: Área inicial (0-1200) - Expandida para tela maior
+    # SEÇÃO 1: Área inicial (0-1200) 
     # Chão principal da área inicial
     for i in range(0, 1200, 64):
         platforms.append(Platform('normal', (i, HEIGHT - 32), (64, 32)))
@@ -120,26 +137,26 @@ def init_game():
     enemies.append(BlueBird(pos=(2000, HEIGHT - 200)))
     enemies.append(BlueBird(pos=(2600, HEIGHT - 300)))
     
-    # RedSquare (quadrados vermelhos) espalhados
-    enemies.append(RedSquare(pos=(700, HEIGHT - 200), size=24))
-    enemies.append(RedSquare(pos=(1600, HEIGHT - 300), size=20))
-    enemies.append(RedSquare(pos=(2200, HEIGHT - 250), size=28))
-    enemies.append(RedSquare(pos=(2800, HEIGHT - 400), size=26))
+    # FireBall (bolas de fogo) espalhadas
+    enemies.append(FireBall(pos=(700, HEIGHT - 200), size=24))
+    enemies.append(FireBall(pos=(1600, HEIGHT - 300), size=20))
+    enemies.append(FireBall(pos=(2200, HEIGHT - 250), size=28))
+    enemies.append(FireBall(pos=(2800, HEIGHT - 400), size=26))
     
-    # GreenCircle (círculos verdes perseguidores)
-    green1 = GreenCircle(pos=(400, HEIGHT - 250), size=22)
+    # Ghost (fantasmas perseguidores)
+    green1 = Ghost(pos=(400, HEIGHT - 250), size=22)
     green1.set_player_reference(player)
     enemies.append(green1)
     
-    green2 = GreenCircle(pos=(1300, HEIGHT - 200), size=24)
+    green2 = Ghost(pos=(1300, HEIGHT - 200), size=24)
     green2.set_player_reference(player)
     enemies.append(green2)
     
-    green3 = GreenCircle(pos=(2100, HEIGHT - 300), size=26)
+    green3 = Ghost(pos=(2100, HEIGHT - 300), size=26)
     green3.set_player_reference(player)
     enemies.append(green3)
     
-    green4 = GreenCircle(pos=(2700, HEIGHT - 350), size=28)
+    green4 = Ghost(pos=(2700, HEIGHT - 350), size=28)
     green4.set_player_reference(player)
     enemies.append(green4)
     
@@ -165,21 +182,36 @@ def update_camera():
     global camera_x, camera_y
     
     if player:
-        # Câmera segue o player horizontalmente (sem limitação)
+        # Câmera segue o player horizontalmente
         target_camera_x = player.x - WIDTH // 2
-        camera_x = target_camera_x  # Remove limitação que impedia movimento
+        camera_x = target_camera_x
         
         # Câmera segue o player verticalmente (com zona morta)
         target_camera_y = player.y - HEIGHT // 2
-        camera_y = max(-300, min(target_camera_y, 200))  # Ajustado para tela maior
+        camera_y = max(-200, min(target_camera_y, 50))
+
+def draw_background(screen):
+    """Desenha o background simples da fase."""
+    if background_image:
+        # Calcula quantas cópias da imagem precisamos para cobrir a tela
+        # considerando o movimento da câmera
+        screen_width = WIDTH
+        bg_width = WIDTH  # Assumindo que a imagem tem a largura da tela
+        
+        # Desenha o background repetido para cobrir toda a área visível
+        start_x = int(-camera_x % bg_width) - bg_width
+        for x in range(start_x, screen_width + bg_width, bg_width):
+            screen.blit(background_image, (x, 0))
 
 def draw(screen):
     """Função para desenhar tudo na tela com câmera."""
     screen.clear()
-    screen.fill((135, 206, 250))  # Azul céu mais claro
     
     # Atualiza câmera
     update_camera()
+    
+    # Desenha o background simples
+    draw_background(screen)
     
     # Desenha todas as plataformas (ajustadas pela câmera)
     for p in platforms:
@@ -250,43 +282,24 @@ def draw(screen):
     
     # UI/Debug (não afetado pela câmera)
     if player:
-        # debug_text = f"Player: x={int(player.x)}, y={int(player.y)}, no chão={player.is_grounded}"
-        # screen.draw.text(debug_text, (10, 70), color="white")
+        # controls_text = "Controles: SETAS/WASD = mover, ESPAÇO/SETA CIMA = pular, ESC = menu"
+        # screen.draw.text(controls_text, (10, HEIGHT - 30), color="white")
         
-        # camera_text = f"Câmera: x={int(camera_x)}, y={int(camera_y)}"
-        # screen.draw.text(camera_text, (10, 90), color="white")
+        phase_text = "FASE 1"
+        screen.draw.text(phase_text, (10, 10), color="white", fontsize=24)
+    
+    # Mensagens temporárias
+    if message_timer > 0:
+        msg_x = WIDTH - 20
+        msg_y = HEIGHT - 20
+        # Texto menor, alinhado no canto inferior direito
+        screen.draw.text(
+            message_text,
+            topright=(msg_x, msg_y),
+            color="black",
+            fontsize=28
+        )
         
-        # enemies_text = f"Inimigos: {len(enemies)} (Triângulos: 5, Quadrados: 4, Círculos: 4)"
-        # screen.draw.text(enemies_text, (10, 110), color="white")
-        
-        controls_text = "Controles: SETAS/WASD = mover, ESPAÇO/SETA CIMA = pular, ESC = menu"
-        screen.draw.text(controls_text, (10, HEIGHT - 30), color="white")
-        
-        # Aviso sobre plataformas perigosas
-        danger_text = "CUIDADO: Plataformas vermelhas com espinhos causam dano!"
-        screen.draw.text(danger_text, (10, HEIGHT - 50), color="red")
-        
-        # # Info sobre hitboxes
-        # hitbox_text = "Hitboxes reduzidos para colisão mais precisa!"
-        # screen.draw.text(hitbox_text, (10, 130), color="green")
-        
-        # Portal no final da fase (quando próximo)
-        if player.x > 2800:
-            portal_text = ">>> PORTAL PARA FASE 2 >>>"
-            screen.draw.text(portal_text, (WIDTH - 250, HEIGHT // 2), color="cyan", fontsize=20)
-            
-            # Mensagem adicional quando muito próximo do portal
-            # if player.x > 2950:
-                # # Efeito piscante
-                # import math
-                # alpha = int(128 + 127 * math.sin(message_timer * 10))
-                # portal_instruction = "ENTRE NO PORTAL DOURADO!"
-                # screen.draw.text(portal_instruction, center=(WIDTH // 2, HEIGHT // 2 + 50), color="gold", fontsize=24)
-                
-                # # Indicador visual de direção
-                # arrow_text = "→ → →"
-                # screen.draw.text(arrow_text, (player.x - camera_x + 50, player.y - camera_y - 50), color="yellow", fontsize=30)
-
 
 def draw_health_ui(screen):
     """Desenha a interface de vida do player."""
@@ -295,7 +308,7 @@ def draw_health_ui(screen):
     
     # Posição inicial dos corações na HUD
     heart_start_x = 10
-    heart_start_y = 10
+    heart_start_y = 60
     heart_size = 32
     heart_spacing = 36
     
@@ -318,22 +331,27 @@ def draw_health_ui(screen):
     # Indicador de invencibilidade
     if player.invincible:
         invincible_text = f"INVENCÍVEL: {player.invincible_timer:.1f}s"
-        screen.draw.text(invincible_text, (heart_start_x, heart_start_y + 55), color="yellow")
+        screen.draw.text(invincible_text, (heart_start_x + 25, heart_start_y + 100), color="yellow")
     
     # Indicador de power-up
     if player.has_power:
         power_text = f"PODER ATIVO: {player.power_timer:.1f}s"
-        screen.draw.text(power_text, (heart_start_x + 200, heart_start_y + 10), color="gold")
-        screen.draw.text("Inimigos vulneráveis!", (heart_start_x + 200, heart_start_y + 25), color="white")
-    
-    # Desenha mensagens temporárias (centralizada na tela)
-    if message_timer > 0:
-        # Posição centralizada
-        msg_x = WIDTH // 2
-        msg_y = HEIGHT // 2 - 50
-        
-        # Desenha a mensagem em vermelho e grande (centralizada)
-        screen.draw.text(message_text, center=(msg_x, msg_y), color="red", fontsize=48)
+        screen.draw.text(power_text, (heart_start_x + 200, heart_start_y + 80), color="gold")
+        screen.draw.text("Inimigos vulneráveis!", (heart_start_x + 200, heart_start_y + 100), color="white")
+
+def update(dt, keyboard):
+    """Função para atualizar a lógica do jogo."""
+    global message_timer
+            # if player.x > 2950:
+                # # Efeito piscante
+                # import math
+                # alpha = int(128 + 127 * math.sin(message_timer * 10))
+                # portal_instruction = "ENTRE NO PORTAL DOURADO!"
+                # screen.draw.text(portal_instruction, center=(WIDTH // 2, HEIGHT // 2 + 50), color="gold", fontsize=24)
+                
+                # # Indicador visual de direção
+                # arrow_text = "→ → →"
+                # screen.draw.text(arrow_text, (player.x - camera_x + 50, player.y - camera_y - 50), color="yellow", fontsize=30)
 
 def update(dt, keyboard):
     """Função para atualizar a lógica do jogo."""
@@ -358,7 +376,6 @@ def update(dt, keyboard):
         # Verifica colisão com inimigos
         enemies_to_remove = []
         for e in enemies:
-            # Usa o novo sistema de hitbox reduzido
             if player.collides_with(e):
                 # Verifica se o player está pulando em cima do inimigo
                 player_rect = player.get_collision_rect()
@@ -423,12 +440,12 @@ def update(dt, keyboard):
         
         # TRIGGER: Verifica se tocou no portal
         if portal and player.colliderect(portal):
-            show_message("🎉 PARABÉNS! FASE 1 CONCLUÍDA! ENTRANDO NA FASE 2... 🎉")
+            show_message("PARABÉNS! FASE 1 CONCLUÍDA! ENTRANDO NA FASE 2...")
             sound_manager.play_sound('portal_enter')
             return "scene2"  # Sinal para trocar de cena
         
         # Se o player cair muito, volta ao início
-        if player.y > 700:  # Ajustado para resolução 800x600
+        if player.y > 700: 
             if player.take_damage():
                 show_message("Você caiu! Cuidado!")
             player.x = 100
@@ -482,5 +499,4 @@ def update(dt, keyboard):
     return None  # Continua na Scene1
 
 # --- Início do Jogo ---
-# Chamamos a função uma vez para construir o nível quando o jogo começa.
 init_game()

@@ -6,20 +6,29 @@ from pgzero.actor import Actor
 
 class Player(Actor):
     def __init__(self, **kwargs):
-        # 1. Animações simplificadas usando sprites femininos
-        self.idle_frames = [f'player/female_sprites/character1f_1_idle_{i}' for i in range(8)]
-        self.run_frames = [f'player/female_sprites/character1f_1_run_{i}' for i in range(8)]
-        self.jump_frames = [f'player/female_sprites/character1f_1_jump_{i}' for i in range(2)]
+        # 1. Animações bidirecionais usando sprites femininos
+        # Frames para direita (originais)
+        self.idle_frames_right = [f'player/female_sprites/character1f_1_idle_{i}' for i in range(8)]
+        self.run_frames_right = [f'player/female_sprites/character1f_1_run_{i}' for i in range(8)]
+        self.jump_frames_right = [f'player/female_sprites/character1f_1_jump_{i}' for i in range(2)]
         
-        # 2. Dicionário de animações simplificado (igual ao original)
+        # Frames para esquerda (flipados)
+        self.idle_frames_left = [f'player/female_sprites/character1f_1_idle_{i}_left' for i in range(8)]
+        self.run_frames_left = [f'player/female_sprites/character1f_1_run_{i}_left' for i in range(8)]
+        self.jump_frames_left = [f'player/female_sprites/character1f_1_jump_{i}_left' for i in range(2)]
+        
+        # 2. Dicionário de animações bidirecionais
         self.animations = {
-            'idle': self.idle_frames,
-            'run': self.run_frames,
-            'jump': self.jump_frames
+            'idle_right': self.idle_frames_right,
+            'run_right': self.run_frames_right,
+            'jump_right': self.jump_frames_right,
+            'idle_left': self.idle_frames_left,
+            'run_left': self.run_frames_left,
+            'jump_left': self.jump_frames_left
         }
         
         # 3. Inicializamos o Actor com o primeiro frame
-        super().__init__(self.idle_frames[0], **kwargs)
+        super().__init__(self.idle_frames_right[0], **kwargs)
 
         # 4. Variáveis de controle simplificadas
         self.state = 'idle'
@@ -49,14 +58,13 @@ class Player(Actor):
         self.power_timer = 0.0
         self.power_duration = 10.0  # 10 segundos de poder
         
-        # Ajuste de hitbox para sprites femininos
-        self.hitbox_scale = 0.7  # Reduzindo mais o hitbox  
+        # Ajuste de hitbox
+        self.hitbox_scale = 0.7
 
     def get_collision_rect(self):
-        """Retorna um retângulo menor para colisão mais precisa."""
-        # Hitbox bem pequeno focado apenas nos pés da personagem
-        hitbox_width = self.width * 0.5  # Muito estreito
-        hitbox_height = self.height * 0.3  # Muito baixo
+        """Retorna um retângulo menor para colisão."""
+        hitbox_width = self.width * 0.5 
+        hitbox_height = self.height * 0.3  
         
         # Posiciona o hitbox bem embaixo da sprite
         hitbox_x = self.x - hitbox_width/2
@@ -101,25 +109,18 @@ class Player(Actor):
         if self.animation_timer > animation_speed:
             self.animation_timer = 0.0
             
+            # Determina o estado com direção
+            direction_suffix = "_right" if self.facing_right else "_left"
+            state_with_direction = self.state + direction_suffix
+            
             # Pega na lista de frames correta
-            current_animation_frames = self.animations[self.state]
+            current_animation_frames = self.animations[state_with_direction]
             
             # Avança o frame
             self.current_frame = (self.current_frame + 1) % len(current_animation_frames)
             
-            # Define a nova imagem
+            # Define a imagem atual com direção
             self.image = current_animation_frames[self.current_frame]
-            
-            # Espelha a imagem se estiver virada para a esquerda
-            if not self.facing_right:
-                # Usa o pygame para espelhar a imagem horizontalmente
-                import pygame
-                # Obtém a surface da imagem atual
-                original_surf = self._surf
-                # Espelha horizontalmente (flip_x=True, flip_y=False)
-                flipped_surf = pygame.transform.flip(original_surf, True, False)
-                # Atualiza a surface
-                self._surf = flipped_surf
     
     def take_damage(self, damage=1):
         """Player recebe dano se não estiver invencível."""

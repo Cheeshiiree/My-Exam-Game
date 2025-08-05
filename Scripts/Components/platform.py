@@ -7,10 +7,10 @@ class Platform(Actor):
     def __init__(self, platform_type='normal', position=(0, 0), size=(64, 32)):
         
         if platform_type == 'normal':
-            # Usa uma imagem verde (vamos criar um arquivo de 1px verde)
+            # Usa uma imagem verde 
             super().__init__('platform_green', pos=position)
         elif platform_type == 'danger':
-            # Usa uma imagem vermelha (vamos criar um arquivo de 1px vermelho)
+            # Usa uma imagem vermelha
             super().__init__('platform_red', pos=position)
         else:
             # Padrão
